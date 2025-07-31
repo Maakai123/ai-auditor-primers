@@ -6471,6 +6471,33 @@ uint256 amountToSellUnits = IERC20Upgradeable(collateral[i].token).balanceOf(USS
 
 **Mitigation**: Implement redeem functionality as specified in whitepaper.
 
+### 356. Consensus.checkSignatures doesn't check duplication of signers
+**Pattern**: SignatureQueue.validateOrder checks signatures using Consensus.checkSignatures.
+But this doesn't check duplication of signers, so malicious attacker can bypass threshold checking.
+
+**Issue**: SignatureDepositQueue.deposit and SignatureRedeemQueue.redeem uses SignatureQueue.validateOrder.
+This checks signatures using Consensus.checkSignatures.
+
+**Vulnerable Code Example**:
+```solidity
+   function checkSignatures(bytes32 orderHash, Signature[] calldata signatures) public view returns (bool) {  
+        ConsensusStorage storage $ = _consensusStorage();  
+ @>     if (signatures.length == 0 || signatures.length < $.threshold) {  
+            return false;  
+        }  
+        for (uint256 i = 0; i < signatures.length; i++) {  
+            address signer = signatures[i].signer;  
+            (bool exists, uint256 signatureTypeValue) = $.signers.tryGet(signer);  
+            if (!exists) {  
+                return false;  
+            }  
+          
+    }
+```
+**Impact**:
+Attacker can get profit using incorrect order bypassing threshold.
+
+
 ## Common Attack Vectors
 
 ### 1. Sandwich Attacks
